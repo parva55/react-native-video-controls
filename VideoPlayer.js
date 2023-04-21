@@ -14,6 +14,7 @@ import {
   View,
   Text,
   Platform,
+  Dimensions,
 } from 'react-native';
 import padStart from 'lodash/padStart';
 
@@ -91,6 +92,11 @@ export default class VideoPlayer extends Component {
       error: false,
       duration: 0,
       source: {uri: videoSource?.uri},
+      // here
+      iconBaseURL: this.props.iconBaseURL,
+      iconURL: '',
+      iconLeftPosition: 0,
+      //
     };
 
     /**
@@ -155,6 +161,9 @@ export default class VideoPlayer extends Component {
       ref: Video,
       scrubbingTimeStep: this.props.scrubbing || 0,
       tapAnywhereToPause: this.props.tapAnywhereToPause,
+      // here
+      iconBaseURL: this.props.iconBaseURL || '',
+      //
     };
 
     /**
@@ -993,6 +1002,12 @@ export default class VideoPlayer extends Component {
     state.volumeOffset = position;
     this.mounted = true;
 
+    // here changes
+    const {width, height} = Dimensions.get('window');
+    this.state.screenWidth = width;
+    this.state.screenHeight = height;
+    this.state.screenOrientation = width > height ? 'landscape' : 'portrait';
+    //
     this.setState(state);
   }
 
@@ -1053,6 +1068,18 @@ export default class VideoPlayer extends Component {
             time < state.duration &&
             timeDifference >= this.player.scrubbingTimeStep
           ) {
+            // here set icon url
+            var url = `${state.iconBaseURL}${Math.round(time).toString()}.jpg`;
+            // console.log('Thumbnail URL will be ', url);
+            state.iconURL = url;
+            let calculatedPosition =
+              position - 80 > 0
+                ? position + 80 > state.screenWidth - 32
+                  ? state.screenWidth - (32 + 160)
+                  : position - 80
+                : 0;
+            state.iconLeftPosition = calculatedPosition;
+            //
             state.scrubbing = true;
 
             this.setState(state);
@@ -1085,6 +1112,9 @@ export default class VideoPlayer extends Component {
           state.paused = state.originallyPaused;
           state.seeking = false;
         }
+        // here
+        state.iconURL = '';
+        //
         this.setState(state);
       },
     });
@@ -1312,7 +1342,13 @@ export default class VideoPlayer extends Component {
       this.props.videoSources?.length > 0
         ? this.renderVideoResolution()
         : this.renderNullControl();
-
+    // here
+    // console.log('Icon URL', this.state.iconURL);
+    const thumbnailControl =
+      this.state.iconURL != ''
+        ? this.renderThumbnail()
+        : this.renderNullControl();
+    //
     return (
       <Animated.View
         style={[
@@ -1322,6 +1358,9 @@ export default class VideoPlayer extends Component {
             marginBottom: this.animations.bottomControl.marginBottom,
           },
         ]}>
+        {/* here */}
+        {thumbnailControl}
+        {/*  */}
         <ImageBackground
           source={require('./assets/img/bottom-vignette.png')}
           style={[styles.controls.column]}
@@ -1427,6 +1466,36 @@ export default class VideoPlayer extends Component {
       styles.controls.timer,
     );
   }
+
+  // here
+  /**
+   * Show our Thumbnail.
+   */
+  renderThumbnail() {
+    return this.renderControl(
+      <View
+        style={{
+          justifyContent: 'flex-start',
+          alignSelf: 'flex-start',
+          display: 'flex',
+        }}>
+        <Image
+          source={{uri: this.state.iconURL}}
+          style={{
+            height: 120,
+            width: 160,
+            position: 'relative',
+            bottom: 0,
+            right: 0,
+            zIndex: 10001,
+            left: this.state.iconLeftPosition,
+            // top: videoHeight-180,
+            // left: previewLeft
+          }}></Image>
+      </View>,
+    );
+  }
+  //
 
   /**
    * Show loading icon
