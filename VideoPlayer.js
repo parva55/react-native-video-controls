@@ -1069,8 +1069,8 @@ export default class VideoPlayer extends Component {
             timeDifference >= this.player.scrubbingTimeStep
           ) {
             // here set icon url
-            var url = `${state.iconBaseURL}${Math.round(time).toString()}.jpg`;
-            // console.log('Thumbnail URL will be ', url);
+            var url = `${state.iconBaseURL}${Math.round(time).toString()}.png`;
+            console.log('Thumbnail URL will be ', url);
             state.iconURL = url;
             let calculatedPosition =
               position - 80 > 0
@@ -1182,7 +1182,14 @@ export default class VideoPlayer extends Component {
    * consistent <TouchableHighlight>
    * wrapper and styling.
    */
-  renderControl(children, callback, style = {}, disabled = false) {
+  renderControl(
+    children,
+    callback,
+    style = {},
+    disabled = false,
+    alwaysOn = false,
+  ) {
+    // console.log('Children', children);
     return (
       <TouchableHighlight
         underlayColor="transparent"
@@ -1224,28 +1231,28 @@ export default class VideoPlayer extends Component {
       : this.renderFullscreen();
 
     return (
-      <Animated.View
-        style={[
-          styles.controls.top,
-          {
-            opacity: this.animations.topControl.opacity,
-            marginTop: this.animations.topControl.marginTop,
-          },
-        ]}>
+      <View style={[styles.controls.top]}>
         <ImageBackground
           source={require('./assets/img/top-vignette.png')}
           style={[styles.controls.column]}
           imageStyle={[styles.controls.vignette]}>
           <SafeAreaView style={styles.controls.topControlGroup}>
             {backControl}
-            <View style={styles.controls.pullRight}>
+            <Animated.View
+              style={[
+                styles.controls.pullRight,
+                {
+                  opacity: this.animations.topControl.opacity,
+                  marginTop: this.animations.topControl.marginTop,
+                },
+              ]}>
               {googleCastControl}
               {volumeControl}
               {fullscreenControl}
-            </View>
+            </Animated.View>
           </SafeAreaView>
         </ImageBackground>
-      </Animated.View>
+      </View>
     );
   }
 
