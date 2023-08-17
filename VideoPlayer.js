@@ -636,95 +636,6 @@ export default class VideoPlayer extends Component {
   }
 
   /**
-   * Toggle fullscreen changes resizeMode on
-   * the <Video> component then updates the
-   * isFullscreen state.
-   */
-  _toggleFullscreen() {
-    let state = this.state;
-
-    state.isFullscreen = !state.isFullscreen;
-
-    if (this.props.toggleResizeModeOnFullscreen) {
-      state.resizeMode = state.isFullscreen === true ? 'cover' : 'contain';
-    }
-
-    if (state.isFullscreen) {
-      typeof this.events.onEnterFullscreen === 'function' &&
-        this.events.onEnterFullscreen();
-    } else {
-      typeof this.events.onExitFullscreen === 'function' &&
-        this.events.onExitFullscreen();
-    }
-
-    this.setState(state);
-  }
-
-  /**
-   * Toggle playing state on <Video> component
-   */
-  _togglePlayPause() {
-    let state = this.state;
-    state.paused = !state.paused;
-
-    if (state.paused) {
-      typeof this.events.onPause === 'function' && this.events.onPause();
-    } else {
-      typeof this.events.onPlay === 'function' && this.events.onPlay();
-    }
-
-    this.setState(state);
-  }
-
-  /**
-   * Toggle between showing time remaining or
-   * video duration in the timer control
-   */
-  _toggleTimer() {
-    let state = this.state;
-    state.showTimeRemaining = !state.showTimeRemaining;
-    this.setState(state);
-  }
-
-  _toggleRate() {
-    const rates = this.props.rates;
-    const indexOfCurrentRate = rates.indexOf(this.state.rate);
-    if (indexOfCurrentRate < 0) return;
-    const nextIndex = (indexOfCurrentRate + 1) % rates.length;
-    const rate = rates[nextIndex];
-
-    typeof this.events.onRateChange === 'function' &&
-      this.events.onRateChange(rate);
-
-    this.setState({rate});
-  }
-
-  _toggleVideoResolution() {
-    const {videoSources} = this.props;
-    const indexOfCurrentResolution = videoSources.findIndex(
-      vs => vs.videoResolution === this.state.videoResolution,
-    );
-    if (this.state.loading || indexOfCurrentResolution < 0) return;
-
-    const nextIndex = (indexOfCurrentResolution + 1) % videoSources.length;
-    const {videoResolution, uri} = videoSources[nextIndex];
-
-    // console.log('toggleVideoRes new uri', uri.split('mp4')[0]);
-    // console.log('toggleVideoRes prev uri', this.state.source.uri.split('mp4')[0]);
-    // console.log('toggleVideRes source', {uri});
-
-    let state = this.state;
-    state.videoResolution = videoResolution;
-    state.source = {uri};
-    state.changingVideoResolution = true;
-    this.setState(state);
-
-    if (typeof this.events.onVideoResolutionChange === 'function') {
-      this.events.onVideoResolutionChange(videoResolution);
-    }
-  }
-
-  /**
    * The default 'onBack' function pops the navigator
    * and as such the video player requires a
    * navigator prop by default.
@@ -737,135 +648,6 @@ export default class VideoPlayer extends Component {
         'Warning: _onBack requires navigator property to function. Either modify the onBack prop or pass a navigator prop',
       );
     }
-  }
-
-  /**
-   * If it's casting the current time is passed by the props
-   * otherwise use the internal one
-   */
-  getCurrentTime() {
-    return this.props.isCasting
-      ? this.props.elapsedTime ?? 0
-      : this.state.currentTime;
-  }
-
-  /**
-   * Calculate the time to show in the timer area
-   * based on if they want to see time remaining
-   * or duration. Formatted to look as 00:00.
-   */
-  calculateTime() {
-    if (this.state.showTimeRemaining) {
-      const time = this.state.duration - this.getCurrentTime();
-      return `-${this.formatTime(time)}`;
-    }
-
-    return this.formatTime(this.getCurrentTime());
-  }
-
-  /**
-   * Format a time string as mm:ss
-   *
-   * @param {int} time time in milliseconds
-   * @return {string} formatted time string in mm:ss format
-   */
-  formatTime(time = 0) {
-    const symbol = this.state.showRemainingTime ? '-' : '';
-    time = Math.min(Math.max(time, 0), this.state.duration);
-
-    if (!this.state.showHours) {
-      const formattedMinutes = padStart(Math.floor(time / 60).toFixed(0), 2, 0);
-      const formattedSeconds = padStart(Math.floor(time % 60).toFixed(0), 2, 0);
-
-      return `${symbol}${formattedMinutes}:${formattedSeconds}`;
-    }
-
-    const formattedHours = padStart(Math.floor(time / 3600).toFixed(0), 2, 0);
-    const formattedMinutes = padStart(
-      (Math.floor(time / 60) % 60).toFixed(0),
-      2,
-      0,
-    );
-    const formattedSeconds = padStart(Math.floor(time % 60).toFixed(0), 2, 0);
-
-    return `${symbol}${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-  }
-
-  /**
-   * Set the position of the seekbar's components
-   * (both fill and handle) according to the
-   * position supplied.
-   *
-   * @param {float} position position in px of seeker handle}
-   */
-  setSeekerPosition(position = 0) {
-    let state = this.state;
-    position = this.constrainToSeekerMinMax(position);
-
-    state.seekerFillWidth = position;
-    state.seekerPosition = position;
-
-    if (!state.seeking) {
-      state.seekerOffset = position;
-    }
-
-    this.setState(state);
-  }
-
-  /**
-   * Constrain the location of the seeker to the
-   * min/max value based on how big the
-   * seeker is.
-   *
-   * @param {float} val position of seeker handle in px
-   * @return {float} constrained position of seeker handle in px
-   */
-  constrainToSeekerMinMax(val = 0) {
-    if (val <= 0) {
-      return 0;
-    } else if (val >= this.player.seekerWidth) {
-      return this.player.seekerWidth;
-    }
-    return val;
-  }
-
-  /**
-   * Calculate the position that the seeker should be
-   * at along its track.
-   *
-   * @return {float} position of seeker handle in px based on currentTime
-   */
-  calculateSeekerPosition() {
-    const percent = this.getCurrentTime() / this.state.duration;
-    return this.player.seekerWidth * percent;
-  }
-
-  /**
-   * Return the time that the video should be at
-   * based on where the seeker handle is.
-   *
-   * @return {float} time in ms based on seekerPosition.
-   */
-  calculateTimeFromSeekerPosition() {
-    const percent = this.state.seekerPosition / this.player.seekerWidth;
-    return this.state.duration * percent;
-  }
-
-  /**
-   * Seek to a time in the video.
-   *
-   * @param {float} time time to seek to in ms
-   */
-  seekTo(time = 0) {
-    if (typeof this.events.onSeekStarted === 'function') {
-      this.events.onSeekStarted(this.state.currentTime, time);
-    }
-
-    if (this.props.isCasting) return;
-    let state = this.state;
-    state.currentTime = time;
-    this.player.ref.seek(time);
-    this.setState(state);
   }
 
   /**
@@ -929,6 +711,231 @@ export default class VideoPlayer extends Component {
   }
 
   /**
+   * Toggle fullscreen changes resizeMode on
+   * the <Video> component then updates the
+   * isFullscreen state.
+   */
+  _toggleFullscreen() {
+    let state = this.state;
+
+    state.isFullscreen = !state.isFullscreen;
+
+    if (this.props.toggleResizeModeOnFullscreen) {
+      state.resizeMode = state.isFullscreen === true ? 'cover' : 'contain';
+    }
+
+    if (state.isFullscreen) {
+      typeof this.events.onEnterFullscreen === 'function' &&
+        this.events.onEnterFullscreen();
+    } else {
+      typeof this.events.onExitFullscreen === 'function' &&
+        this.events.onExitFullscreen();
+    }
+
+    this.setState(state);
+  }
+
+/**
+   * If it's casting the current time is passed by the props
+   * otherwise use the internal one
+   */
+getCurrentTime() {
+  return this.props.isCasting
+    ? this.props.elapsedTime ?? 0
+    : this.state.currentTime;
+}
+
+/**
+ * Calculate the time to show in the timer area
+ * based on if they want to see time remaining
+ * or duration. Formatted to look as 00:00.
+ */
+calculateTime() {
+  if (this.state.showTimeRemaining) {
+    const time = this.state.duration - this.getCurrentTime();
+    return `-${this.formatTime(time)}`;
+  }
+
+  return this.formatTime(this.getCurrentTime());
+}
+
+/**
+ * Format a time string as mm:ss
+ *
+ * @param {int} time time in milliseconds
+ * @return {string} formatted time string in mm:ss format
+ */
+formatTime(time = 0) {
+  const symbol = this.state.showRemainingTime ? '-' : '';
+  time = Math.min(Math.max(time, 0), this.state.duration);
+
+  if (!this.state.showHours) {
+    const formattedMinutes = padStart(Math.floor(time / 60).toFixed(0), 2, 0);
+    const formattedSeconds = padStart(Math.floor(time % 60).toFixed(0), 2, 0);
+
+    return `${symbol}${formattedMinutes}:${formattedSeconds}`;
+  }
+
+  const formattedHours = padStart(Math.floor(time / 3600).toFixed(0), 2, 0);
+  const formattedMinutes = padStart(
+    (Math.floor(time / 60) % 60).toFixed(0),
+    2,
+    0,
+  );
+  const formattedSeconds = padStart(Math.floor(time % 60).toFixed(0), 2, 0);
+
+  return `${symbol}${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+}
+
+/**
+ * Set the position of the seekbar's components
+ * (both fill and handle) according to the
+ * position supplied.
+ *
+ * @param {float} position position in px of seeker handle}
+ */
+setSeekerPosition(position = 0) {
+  let state = this.state;
+  position = this.constrainToSeekerMinMax(position);
+
+  state.seekerFillWidth = position;
+  state.seekerPosition = position;
+
+  if (!state.seeking) {
+    state.seekerOffset = position;
+  }
+
+  this.setState(state);
+}
+
+/**
+ * Constrain the location of the seeker to the
+ * min/max value based on how big the
+ * seeker is.
+ *
+ * @param {float} val position of seeker handle in px
+ * @return {float} constrained position of seeker handle in px
+ */
+constrainToSeekerMinMax(val = 0) {
+  if (val <= 0) {
+    return 0;
+  } else if (val >= this.player.seekerWidth) {
+    return this.player.seekerWidth;
+  }
+  return val;
+}
+
+/**
+ * Calculate the position that the seeker should be
+ * at along its track.
+ *
+ * @return {float} position of seeker handle in px based on currentTime
+ */
+calculateSeekerPosition() {
+  const percent = this.getCurrentTime() / this.state.duration;
+  return this.player.seekerWidth * percent;
+}
+
+/**
+ * Return the time that the video should be at
+ * based on where the seeker handle is.
+ *
+ * @return {float} time in ms based on seekerPosition.
+ */
+calculateTimeFromSeekerPosition() {
+  const percent = this.state.seekerPosition / this.player.seekerWidth;
+  return this.state.duration * percent;
+}
+
+/**
+ * Seek to a time in the video.
+ *
+ * @param {float} time time to seek to in ms
+ */
+seekTo(time = 0) {
+  if (typeof this.events.onSeekStarted === 'function') {
+    this.events.onSeekStarted(this.state.currentTime, time);
+  }
+
+  if (this.props.isCasting) return;
+  let state = this.state;
+  state.currentTime = time;
+  this.player.ref.seek(time);
+  this.setState(state);
+}
+
+/**
+   * Toggle between showing time remaining or
+   * video duration in the timer control
+   */
+_toggleTimer() {
+  let state = this.state;
+  state.showTimeRemaining = !state.showTimeRemaining;
+  this.setState(state);
+}
+
+/**
+ * Toggle playing state on <Video> component
+ */
+_togglePlayPause() {
+  let state = this.state;
+  state.paused = !state.paused;
+
+  if (state.paused) {
+    typeof this.events.onPause === 'function' && this.events.onPause();
+  } else {
+    typeof this.events.onPlay === 'function' && this.events.onPlay();
+  }
+
+  this.setState(state);
+}
+
+/**
+ * Toggle rate state on <Video> component
+ */
+_toggleRate() {
+  const rates = this.props.rates;
+  const indexOfCurrentRate = rates.indexOf(this.state.rate);
+  if (indexOfCurrentRate < 0) return;
+  const nextIndex = (indexOfCurrentRate + 1) % rates.length;
+  const rate = rates[nextIndex];
+
+  typeof this.events.onRateChange === 'function' &&
+    this.events.onRateChange(rate);
+
+  this.setState({rate});
+}
+
+/**
+ * Toggle resolution state on <Video> component
+ */
+_toggleVideoResolution() {
+  const {videoSources} = this.props;
+  const indexOfCurrentResolution = videoSources.findIndex(
+    vs => vs.videoResolution === this.state.videoResolution,
+  );
+  if (this.state.loading || indexOfCurrentResolution < 0) return;
+
+  const nextIndex = (indexOfCurrentResolution + 1) % videoSources.length;
+  const {videoResolution, uri} = videoSources[nextIndex];
+
+  // console.log('toggleVideoRes new uri', uri.split('mp4')[0]);
+  // console.log('toggleVideoRes prev uri', this.state.source.uri.split('mp4')[0]);
+  // console.log('toggleVideRes source', {uri});
+
+  let state = this.state;
+  state.videoResolution = videoResolution;
+  state.source = {uri};
+  state.changingVideoResolution = true;
+  this.setState(state);
+
+  if (typeof this.events.onVideoResolutionChange === 'function') {
+    this.events.onVideoResolutionChange(videoResolution);
+  }
+}
+
+
+  /**
     | -------------------------------------------------------
     | React Component functions
     | -------------------------------------------------------
@@ -944,8 +951,8 @@ export default class VideoPlayer extends Component {
    * pan responders.
    */
   UNSAFE_componentWillMount() {
-    this.initSeekPanResponder();
     this.initVolumePanResponder();
+    this.initSeekPanResponder();
   }
 
   /**
@@ -1018,6 +1025,50 @@ export default class VideoPlayer extends Component {
   componentWillUnmount() {
     this.mounted = false;
     this.clearControlTimeout();
+  }
+
+  /**
+    * Initialize the volume pan responder.
+    */
+  initVolumePanResponder() {
+    this.player.volumePanResponder = PanResponder.create({
+      onStartShouldSetPanResponder: (evt, gestureState) => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => true,
+      onPanResponderGrant: (evt, gestureState) => {
+        this.clearControlTimeout();
+      },
+
+      /**
+      * Update the volume as we change the position.
+      * If we go to 0 then turn on the mute prop
+      * to avoid that weird static-y sound.
+      */
+      onPanResponderMove: (evt, gestureState) => {
+        let state = this.state;
+        const position = this.state.volumeOffset + gestureState.dx;
+
+        this.setVolumePosition(position);
+        state.volume = this.calculateVolumeFromVolumePosition();
+
+        if (state.volume <= 0) {
+          state.muted = true;
+        } else {
+          state.muted = false;
+        }
+
+        this.setState(state);
+      },
+
+      /**
+      * Update the offset...
+      */
+      onPanResponderRelease: (evt, gestureState) => {
+        let state = this.state;
+        state.volumeOffset = state.volumePosition;
+        this.setControlTimeout();
+        this.setState(state);
+      },
+    });
   }
 
   /**
@@ -1115,50 +1166,6 @@ export default class VideoPlayer extends Component {
         // here
         state.iconURL = '';
         //
-        this.setState(state);
-      },
-    });
-  }
-
-  /**
-   * Initialize the volume pan responder.
-   */
-  initVolumePanResponder() {
-    this.player.volumePanResponder = PanResponder.create({
-      onStartShouldSetPanResponder: (evt, gestureState) => true,
-      onMoveShouldSetPanResponder: (evt, gestureState) => true,
-      onPanResponderGrant: (evt, gestureState) => {
-        this.clearControlTimeout();
-      },
-
-      /**
-       * Update the volume as we change the position.
-       * If we go to 0 then turn on the mute prop
-       * to avoid that weird static-y sound.
-       */
-      onPanResponderMove: (evt, gestureState) => {
-        let state = this.state;
-        const position = this.state.volumeOffset + gestureState.dx;
-
-        this.setVolumePosition(position);
-        state.volume = this.calculateVolumeFromVolumePosition();
-
-        if (state.volume <= 0) {
-          state.muted = true;
-        } else {
-          state.muted = false;
-        }
-
-        this.setState(state);
-      },
-
-      /**
-       * Update the offset...
-       */
-      onPanResponderRelease: (evt, gestureState) => {
-        let state = this.state;
-        state.volumeOffset = state.volumePosition;
-        this.setControlTimeout();
         this.setState(state);
       },
     });
@@ -1309,36 +1316,23 @@ export default class VideoPlayer extends Component {
     );
   }
 
-  renderRateControl() {
-    const rateToString = Number(this.state.rate.toFixed(2)) + 'x';
-    return this.renderControl(
-      <Text style={styles.controls.rateText}>{rateToString}</Text>,
-      this.methods.toggleRate,
-      styles.controls.rate,
-    );
-  }
-
-  renderVideoResolution() {
-    return this.renderControl(
-      <Text style={styles.controls.videoResolutionText}>
-        {this.state.videoResolution}
-      </Text>,
-      this.methods.toggleVideoResolution,
-      styles.controls.videoResolution,
-      this.state.loading,
-    );
-  }
-
   /**
    * Render bottom control group and wrap it in a holder
    */
   renderBottomControls() {
-    const timerControl = this.props.disableTimer
-      ? this.renderNullControl()
-      : this.renderTimer();
+    // here
+    // console.log('Icon URL', this.state.iconURL);
+    const thumbnailControl =
+      this.state.iconURL != ''
+        ? this.renderThumbnail()
+        : this.renderNullControl();
+    //
     const seekbarControl = this.props.disableSeekbar
       ? this.renderNullControl()
       : this.renderSeekbar();
+    const timerControl = this.props.disableTimer
+      ? this.renderNullControl()
+      : this.renderTimer();
     const playPauseControl = this.props.disablePlayPause
       ? this.renderNullControl()
       : this.renderPlayPause();
@@ -1349,13 +1343,6 @@ export default class VideoPlayer extends Component {
       this.props.videoSources?.length > 0
         ? this.renderVideoResolution()
         : this.renderNullControl();
-    // here
-    // console.log('Icon URL', this.state.iconURL);
-    const thumbnailControl =
-      this.state.iconURL != ''
-        ? this.renderThumbnail()
-        : this.renderNullControl();
-    //
     return (
       <Animated.View
         style={[
@@ -1373,6 +1360,9 @@ export default class VideoPlayer extends Component {
           style={[styles.controls.column]}
           imageStyle={[styles.controls.vignette]}>
           {seekbarControl}
+          <SafeAreaView style={[styles.controls.row]}>
+          {timerControl}
+          </SafeAreaView>
           <SafeAreaView
             style={[styles.controls.row, styles.controls.bottomControlGroup]}>
             <SafeAreaView style={[styles.controls.leftBottomControlGroup]}>
@@ -1381,12 +1371,42 @@ export default class VideoPlayer extends Component {
               {videoResolutionsControl}
             </SafeAreaView>
             {this.renderTitle()}
-            {timerControl}
+            {/* {timerControl} */}
           </SafeAreaView>
         </ImageBackground>
       </Animated.View>
     );
   }
+
+  // here
+  /**
+    * Show our Thumbnail.
+    */
+  renderThumbnail() {
+    return this.renderControl(
+      <View
+        style={{
+          justifyContent: 'flex-start',
+          alignSelf: 'flex-start',
+          display: 'flex',
+        }}>
+        <Image
+          source={{uri: this.state.iconURL}}
+          style={{
+            height: 120,
+            width: 160,
+            position: 'relative',
+            bottom: 0,
+            right: 0,
+            zIndex: 10001,
+            left: this.state.iconLeftPosition,
+            // top: videoHeight-180,
+            // left: previewLeft
+          }}></Image>
+      </View>,
+    );
+  }
+  //
 
   /**
    * Render the seekbar and attach its handlers
@@ -1429,8 +1449,33 @@ export default class VideoPlayer extends Component {
     );
   }
 
+  // here
   /**
-   * Render the play/pause button and show the respective icon
+   * Show our timer.
+   */
+  renderTimer() {
+    const totalTime = this.formatTime(this.state.duration);
+    const currentTime = this.formatTime(this.getCurrentTime());
+    return (
+      <View style={styles.controls.timerContainer}>
+        <View style={styles.controls.leftTimer}>
+            <Text style={styles.controls.timerText}>{totalTime}</Text>
+        </View>
+        <View style={styles.controls.rightTimer}>
+          <Text style={styles.controls.timerText}>{currentTime}</Text>
+        </View>
+      </View>
+      );
+      // return this.renderControl(
+      //   <Text style={styles.controls.timerText}>{this.calculateTime()}</Text>,
+      //   this.methods.toggleTimer,
+      //   styles.controls.timer,
+      // );
+    }
+  //
+
+  /**
+   * Render the play/pause button
    */
   renderPlayPause() {
     let source =
@@ -1441,6 +1486,32 @@ export default class VideoPlayer extends Component {
       <Image source={source} />,
       this.methods.togglePlayPause,
       styles.controls.playPause,
+    );
+  }
+
+  /**
+   * Render the rate control button
+   */
+  renderRateControl() {
+    const rateToString = Number(this.state.rate.toFixed(2)) + 'x';
+    return this.renderControl(
+      <Text style={styles.controls.rateText}>{rateToString}</Text>,
+      this.methods.toggleRate,
+      styles.controls.rate,
+    );
+  }
+
+  /**
+   * Render the resolution control button
+   */
+  renderVideoResolution() {
+    return this.renderControl(
+      <Text style={styles.controls.videoResolutionText}>
+        {this.state.videoResolution}
+      </Text>,
+      this.methods.toggleVideoResolution,
+      styles.controls.videoResolution,
+      this.state.loading,
     );
   }
 
@@ -1462,47 +1533,6 @@ export default class VideoPlayer extends Component {
 
     return null;
   }
-
-  /**
-   * Show our timer.
-   */
-  renderTimer() {
-    return this.renderControl(
-      <Text style={styles.controls.timerText}>{this.calculateTime()}</Text>,
-      this.methods.toggleTimer,
-      styles.controls.timer,
-    );
-  }
-
-  // here
-  /**
-   * Show our Thumbnail.
-   */
-  renderThumbnail() {
-    return this.renderControl(
-      <View
-        style={{
-          justifyContent: 'flex-start',
-          alignSelf: 'flex-start',
-          display: 'flex',
-        }}>
-        <Image
-          source={{uri: this.state.iconURL}}
-          style={{
-            height: 120,
-            width: 160,
-            position: 'relative',
-            bottom: 0,
-            right: 0,
-            zIndex: 10001,
-            left: this.state.iconLeftPosition,
-            // top: videoHeight-180,
-            // left: previewLeft
-          }}></Image>
-      </View>,
-    );
-  }
-  //
 
   /**
    * Show loading icon
@@ -1812,6 +1842,19 @@ const styles = {
     },
     timer: {
       width: 100,
+    },
+    timerContainer: {
+      flex:1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      // alignItems: 'center',
+      paddingHorizontal: 10, // Adjust this value as needed
+    },
+    leftTimer: {
+    },
+    rightTimer: {
+      justifyContent:'flex-end',
+      alignItems: 'flex-end',
     },
     timerText: {
       backgroundColor: 'transparent',
